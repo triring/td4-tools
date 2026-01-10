@@ -1,0 +1,18 @@
+; Sample 3: Countdown Timer
+; 15から0までカウントダウンし、0になったら点滅
+
+START:
+    MOV A, 15    ; カウンタ初期値 1111
+
+COUNT_DOWN:
+    MOV B, A     ; 表示用にBへ
+    OUT B        ; 現在のカウントを表示
+    ADD A, 15    ; 15を足す＝1引くのと同じ (例: 2+15=17->1)
+    JNC FINISH   ; キャリーが出ない＝0からさらに引いた瞬間 なので終了へ
+    JMP COUNT_DOWN
+
+FINISH:
+    ; 終了時の点滅演出
+    OUT 15       ; 全点灯
+    OUT 0        ; 全消灯
+    JMP FINISH   ; ここで無限ループ（点滅が早すぎる場合はWaitが必要だが容量不足）

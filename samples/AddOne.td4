@@ -1,0 +1,9 @@
+; Sample 2: Input + 1 -> Output
+; 入力ポートの値に1を足して出力ポートへ送り出す
+
+LOOP:
+    IN A        ; 入力ポートの値をAレジスタに読み込む
+    ADD A, 1    ; Aに1を加算する
+    MOV B, A    ; 出力するためBへ転送
+    OUT B       ; 出力ポートへ送り出す
+    JMP LOOP    ; 繰り返し

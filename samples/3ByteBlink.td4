@@ -1,0 +1,6 @@
+; LED点滅プログラム
+; わずか3byteの命令でLチカができます。
+START:
+    OUT 15     ; LED全点灯
+    OUT 0      ; 全消灯
+    JMP START  ; 繰り返し
