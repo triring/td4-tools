@@ -22,7 +22,6 @@
 
 ```text
 ラベル  命令  オペランド  ; コメント
-
 ```
 
 * **ラベル**: ジャンプ先のマーカー。行頭に記述し、末尾にコロン`:`を付けることが推奨します（なくても動作します）。
@@ -75,11 +74,12 @@ Summation.td4
     OUT B          ; Bレジスタの値を出力ポートに送る。
 STOP:
     JMP STOP ; ここで無限ループにして、停止状態にする。
-
 ```
 
 ## 3. コンパイル方法
-本ツールはGo言語で記述されています。実行ファイルを生成するにはGoの環境が必要です。  
+
+本ツールはGo言語で記述されています。実行ファイルを生成するにはGoの開発環境が必要です。  
+開発環境が、まだインストールされていない場合は、[Go言語公式サイト](https://go.dev/dl/)からインストーラーをダウンロードし、インストールしておいてください。  
 ターミナル（WindowsならコマンドプロンプトやPowerShell、Mac/LinuxならTerminal）を開き、ソースコード(`main.go`)があるディレクトリで、以下のコマンドを入力して実行してください。  
 
 ### 手順
@@ -87,13 +87,11 @@ STOP:
 **Windowsの場合:**
 ```cmd
 go build -o td4asm.exe main.go
-
 ```
 
 **Mac / Linuxの場合:**
 ```bash
 go build -o td4asm main.go
-
 ```
 
 ※ 何もエラーが表示されずに終了すればコンパイル成功です。同じフォルダに実行ファイルが生成されます。  
@@ -110,7 +108,6 @@ go build -o td4asm main.go
 
 ```bash
 .\td4asm.exe [オプション] <ソースファイル名>
-
 ```
 
 ### ファイル名について
@@ -153,7 +150,6 @@ Pass 1 : Ok!
 Pass 2 : Ok!
 Assembly completed without errors.
 Code size 7 bytes.
-
 ```
 
 #### -list リスト表示オプション
@@ -175,7 +171,6 @@ Code size 7 bytes.
  06 [0110] | 1111_0000 |  F0 | JMP LOOP
 
 Success! Generated 7 bytes.
-
 ```
 
 #### -dump ダンプ表示オプション
