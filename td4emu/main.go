@@ -243,7 +243,7 @@ func main() {
 						cpu.InPort = uint8(0x0f & val)
 					}
 				}
-			case 'S' : // ステップ実行回数の設定する。
+			case 'T' : // レジスタ表示しながらトレース実行する回数を設定する。
 				elements := strings.Split(line, " ")
 			//	fmt.Printf("elements:%v,%d\n", elements, len(elements))
 				if len(elements) > 1 {
