@@ -1,7 +1,9 @@
 package main
 // 4bitCPU td4用のアセンブラ
 // td4用のソースコードを読み込み、アセンブルして、16進数テキスト形式に変換して出力するプログラムです。
+// > go fmt .\main.go
 // > go build -o td4asm.exe .\main.go
+
 
 import (
 	"bufio"
