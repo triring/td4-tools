@@ -269,7 +269,7 @@ func main() {
 	fmt.Printf("|:--------|:-----:|:---------:|:---------:|:---:|:-------:|:--------:|\n")
 	//	現在の状態を表示
 	cpu.DumpState(cpu.PC)
-	fmt.Printf("\n")
+	//	fmt.Printf("\n")
 	//	入力待ち用のリーダー
 	stdin := bufio.NewReader(os.Stdin)
 	execStatus := true
