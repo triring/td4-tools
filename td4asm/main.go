@@ -1,9 +1,9 @@
 package main
+
 // 4bitCPU td4用のアセンブラ
 // td4用のソースコードを読み込み、アセンブルして、16進数テキスト形式に変換して出力するプログラムです。
 // > go fmt .\main.go
 // > go build -o td4asm.exe .\main.go
-
 
 import (
 	"bufio"
@@ -50,7 +50,7 @@ func (asm *Assembler) CleanLine(line string) []string {
 	}
 	// 2. カンマをスペースに置換
 	line = strings.ReplaceAll(line, ",", " ")
-	
+
 	// 3. 空白で分割
 	fields := strings.Fields(line)
 	return fields
@@ -66,7 +66,7 @@ func (asm *Assembler) Pass1() error {
 		}
 
 		firstWord := strings.ToUpper(tokens[0])
-		
+
 		if _, isInst := InstructionSet[firstWord]; !isInst {
 			// ラベル定義
 			labelName := strings.TrimSuffix(firstWord, ":")
@@ -103,7 +103,7 @@ func (asm *Assembler) Pass2() error {
 		if _, isInst := InstructionSet[firstWord]; !isInst {
 			// ラベル行
 			if len(tokens) == 1 {
-				continue 
+				continue
 			}
 			// ラベル + 命令
 			mnemonic = strings.ToUpper(tokens[1])
@@ -122,12 +122,12 @@ func (asm *Assembler) Pass2() error {
 
 		// 結果を保存
 		asm.binaries = append(asm.binaries, code)
-		
+
 		// 表示用に整形したソースコードを保存 (例: "MOV A, B")
 		// 引数の間にカンマを入れて読みやすくする
 		prettyArgs := strings.Join(args, ", ")
 		asm.debugLines = append(asm.debugLines, fmt.Sprintf("%s %s", mnemonic, prettyArgs))
-		
+
 		pc++
 	}
 	return nil
@@ -138,7 +138,7 @@ func (asm *Assembler) generateCode(mnemonic string, args []string, currentPC int
 	parseImm := func(s string) (uint8, error) {
 		// ラベル解決
 		if val, ok := asm.symbolTable[strings.ToUpper(s)]; ok {
-			return uint8(val & 0x0F), nil 
+			return uint8(val & 0x0F), nil
 		}
 		// 数値変換
 		val, err := strconv.ParseInt(s, 0, 8)
@@ -152,57 +152,95 @@ func (asm *Assembler) generateCode(mnemonic string, args []string, currentPC int
 	}
 
 	switch mnemonic {
-	case "ADD":	// レジスタに即値を加算
-		if len(args) != 2 { return 0, fmt.Errorf("ADD requires 2 arguments") }
+	case "ADD": // レジスタに即値を加算
+		if len(args) != 2 {
+			return 0, fmt.Errorf("ADD requires 2 arguments")
+		}
 		im, err := parseImm(args[1])
-		if err != nil { return 0, err }
-		if args[0] == "A" { return 0x00 | im, nil }
-		if args[0] == "B" { return 0x50 | im, nil }
+		if err != nil {
+			return 0, err
+		}
+		if args[0] == "A" {
+			return 0x00 | im, nil
+		}
+		if args[0] == "B" {
+			return 0x50 | im, nil
+		}
 		return 0, fmt.Errorf("ADD target must be A or B")
 
-	case "MOV":	// レジスタの内容を変更
-		if len(args) != 2 { return 0, fmt.Errorf("MOV requires 2 arguments") }
+	case "MOV": // レジスタの内容を変更
+		if len(args) != 2 {
+			return 0, fmt.Errorf("MOV requires 2 arguments")
+		}
 		target, src := args[0], args[1]
-		if target == "A" && src == "B" { return 0x10, nil } // AレジスタにBレジスタの内容を転送
-		if target == "B" && src == "A" { return 0x40, nil } // BレジスタにAレジスタの内容を転送
-		if target == "A" {	// Aレジスタに即値を代入
+		if target == "A" && src == "B" {
+			return 0x10, nil
+		} // AレジスタにBレジスタの内容を転送
+		if target == "B" && src == "A" {
+			return 0x40, nil
+		} // BレジスタにAレジスタの内容を転送
+		if target == "A" { // Aレジスタに即値を代入
 			im, err := parseImm(src)
-			if err != nil { return 0, err }
+			if err != nil {
+				return 0, err
+			}
 			return 0x30 | im, nil
 		}
-		if target == "B" {	// Bレジスタに即値を代入
+		if target == "B" { // Bレジスタに即値を代入
 			im, err := parseImm(src)
-			if err != nil { return 0, err }
+			if err != nil {
+				return 0, err
+			}
 			return 0x70 | im, nil
 		}
 		return 0, fmt.Errorf("invalid MOV operands")
 
-	case "JMP":	// 指定アドレスへジャンプ
-		if len(args) != 1 { return 0, fmt.Errorf("JMP requires 1 argument") }
+	case "JMP": // 指定アドレスへジャンプ
+		if len(args) != 1 {
+			return 0, fmt.Errorf("JMP requires 1 argument")
+		}
 		im, err := parseImm(args[0])
-		if err != nil { return 0, err }
+		if err != nil {
+			return 0, err
+		}
 		return 0xF0 | im, nil
 
-	case "JNC":	// Cフラグが0なら指定アドレスへジャンプ
-		if len(args) != 1 { return 0, fmt.Errorf("JNC requires 1 argument") }
+	case "JNC": // Cフラグが0なら指定アドレスへジャンプ
+		if len(args) != 1 {
+			return 0, fmt.Errorf("JNC requires 1 argument")
+		}
 		im, err := parseImm(args[0])
-		if err != nil { return 0, err }
+		if err != nil {
+			return 0, err
+		}
 		return 0xE0 | im, nil
 
-	case "IN":	// 入力
-		if len(args) != 1 { return 0, fmt.Errorf("IN requires 1 argument") }
-		if args[0] == "A" { return 0x20, nil }	// Aレジスタに入力ポートの内容を転送
-		if args[0] == "B" { return 0x60, nil }	// Bレジスタに入力ポートの内容を転送
+	case "IN": // 入力
+		if len(args) != 1 {
+			return 0, fmt.Errorf("IN requires 1 argument")
+		}
+		if args[0] == "A" {
+			return 0x20, nil
+		} // Aレジスタに入力ポートの内容を転送
+		if args[0] == "B" {
+			return 0x60, nil
+		} // Bレジスタに入力ポートの内容を転送
 		return 0, fmt.Errorf("IN target must be A or B")
 
-	case "OUT":	// 出力
-		if len(args) != 1 { return 0, fmt.Errorf("OUT requires 1 argument") }
-		if args[0] == "B" { return 0x90, nil }	// Bレジスタの内容を出力ポートへ転送
+	case "OUT": // 出力
+		if len(args) != 1 {
+			return 0, fmt.Errorf("OUT requires 1 argument")
+		}
+		if args[0] == "B" {
+			return 0x90, nil
+		} // Bレジスタの内容を出力ポートへ転送
 		im, err := parseImm(args[0])
-		if err != nil { return 0, err }
-		return 0xB0 | im, nil	// 即値を出力ポートへ転送
+		if err != nil {
+			return 0, err
+		}
+		return 0xB0 | im, nil // 即値を出力ポートへ転送
 
-	case "NOP":	// 何もしない
+	case "NOP": // 何もしない
 		return 0x00, nil
 	}
 
@@ -210,7 +248,7 @@ func (asm *Assembler) generateCode(mnemonic string, args []string, currentPC int
 }
 
 func main() {
-	var noOption bool = false  // オプションの指定がない場合のフラグ
+	var noOption bool = false // オプションの指定がない場合のフラグ
 
 	// 1. オプション（フラグ）の定義
 	var dumpFlag bool
@@ -273,7 +311,7 @@ func main() {
 	// オプションの指定がない場合のフラグを立てる。
 	if dumpFlag == false && listFlag == false && outputFile == "" {
 		noOption = true
-	} 
+	}
 	asm := NewAssembler(lines)
 	// fmt.Printf("Assembling %s ...\n", filePath)
 
@@ -282,16 +320,16 @@ func main() {
 		os.Exit(1)
 	} else {
 		if noOption {
-			fmt.Println("Pass 1 : Ok!") 
+			fmt.Println("Pass 1 : Ok!")
 		}
 	}
 
 	if err := asm.Pass2(); err != nil {
 		log.Fatalf("Pass 2 Error: %v", err)
 		os.Exit(2)
- 	}  else {
+	} else {
 		if noOption {
-			fmt.Println("Pass 2 : Ok!") 
+			fmt.Println("Pass 2 : Ok!")
 		}
 	}
 	if noOption == true {
@@ -316,8 +354,8 @@ func main() {
 			sourceCode := ""
 			if i < len(asm.debugLines) {
 				sourceCode = asm.debugLines[i]
-			}		
-			fmt.Printf(" %02X [%04b] | %04b_%04b |  %02X | %s\n", i, i, b >> 4, b & 0x0f, b, sourceCode)
+			}
+			fmt.Printf(" %02X [%04b] | %04b_%04b |  %02X | %s\n", i, i, b>>4, b&0x0f, b, sourceCode)
 		}
 		fmt.Printf("\nSuccess! Generated %d bytes.\n", len(asm.binaries))
 	}
@@ -331,9 +369,13 @@ func main() {
 		defer f.Close()
 
 		writer := bufio.NewWriter(f)
+		_, err = fmt.Fprintf(writer, "S 0x00 ")
+		if err != nil {
+			log.Fatalf("Error writing to file: %v", err)
+		}
 		for _, b := range asm.binaries {
 			// エミュレータが読み込める形式（HEX文字列＋改行）で書き込む
-			_, err := fmt.Fprintf(writer, "%02X\n", b)
+			_, err := fmt.Fprintf(writer, "0x%02X ", b)
 			if err != nil {
 				log.Fatalf("Error writing to file: %v", err)
 			}

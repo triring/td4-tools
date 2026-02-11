@@ -33,6 +33,20 @@ var (
 	MEM_MAX uint8 = 15
 )
 
+var HelpText = [...]string{
+	"Command list",
+	"\tH :(Help) コマンドの使用方法を表示する。",
+	"\tS [address] [pocode] [pocode] ... :(Setdata) 指定したメモリ番地にオペコードを書き込む。",
+	"\tB [bp] :(Breakpoint) ブレークポイントの設定と削除を行う。",
+	"\tM :(Memory) 現在の現在のメモリの内容を表示する。",
+	"\tD :(Dump) 現在のCPUのレジスタ内容を表示する。",
+	"\tT [count] :(Trace) プログラムを指定回数だけ命令を実行する（ステップ実行）。",
+	"\tG [address] :(Go) 指定したアドレスからプログラムを実行する。",
+	"\tV [speed] :(Velocity) 実行速度を設定する。",
+	"\tI [bit pattern] :(InPort) 入力ポートの値を設定する。",
+	"\tQ :(Quit) モニタプログラムを終了する。",
+}
+
 // NewCPU CPUの初期化
 func NewCPU() *CPU {
 	return &CPU{
@@ -42,6 +56,13 @@ func NewCPU() *CPU {
 }
 
 // LoadROM ファイルからHex文字列を読み込んでROMに格納
+// 書式 S コマンドと同じ
+// S adr opc1 opc2 opc3 ...
+// 行の先頭は、S
+// 2つ目は、書き込み開始アドレス
+// それ以降に、書き込むバイナリデータ
+// それぞれのデータ間は、スペースで区切る。
+// LoadROM ファイルからHex文字列を読み込んでROMに格納
 func (cpu *CPU) LoadROM(filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -50,9 +71,11 @@ func (cpu *CPU) LoadROM(filename string) error {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	addr := 0
+	//	adr := 0
 	for scanner.Scan() {
 		line := scanner.Text()
+		line = strings.ToUpper(line)
+		line = strings.Replace(line, ",", " ", -1)
 		line = strings.Trim(line, " \n\r")
 		if line == "" { // 空行の場合は、読み飛ばす。
 			continue
@@ -60,20 +83,53 @@ func (cpu *CPU) LoadROM(filename string) error {
 		if line[0] == ';' { // コメントの場合は、読み飛ばす。
 			continue
 		}
-		// 16進数文字列を数値に変換
-		val, err := strconv.ParseUint(line, 16, 8)
-		if err != nil {
-			return fmt.Errorf("invalid hex format at line %d: %s", addr+1, line)
+		if line[0] != 'S' {
+			continue
 		}
-
-		if addr < 16 {
-			cpu.ROM[addr] = uint8(val)
-			addr++
-		} else {
-			return fmt.Errorf("Memory overflow!!\nThe memory size of this system is  %d bytes.", len(cpu.ROM))
-		}
+		// 要素に分割
+		elements := strings.Split(strings.Trim(line, " \n\r"), " ")
+		cpu.writeMemory(elements)
+		break
 	}
 	return scanner.Err()
+}
+
+func (cpu *CPU) writeMemory(elements []string) {
+	if 3 > len(elements) { // パラメータが足りない場合は、警告して終了
+		fmt.Printf("Insufficient address or opcode information required for writing.\n")
+		return
+	} //	書き込み開始アドレスのデコード
+	adr, adr_err := strconv.ParseInt(strings.Trim(elements[1], " \n\r"), 0, 16)
+	if adr_err != nil { //	正常に整数値に変換されたかをチェック
+		fmt.Printf("The address is specified incorrectly.\n")
+		return
+	}
+	if false == inRange(MEM_MIN, uint8(adr), MEM_MAX) { //	指定されたアドレスがメモリ空間内であるかをチェック
+		fmt.Printf("This system's memory space is limited to 0 to 15 bytes.\n")
+		return
+	}
+	index := 2
+	for {
+		val, val_err := strconv.ParseInt(strings.Trim(elements[index], " \n\r"), 0, 16)
+		//	fmt.Printf("%d %T\n",val, val_err)
+		if val_err == nil { //	正常に整数値に変換されたかをチェック
+		//	fmt.Printf("%x %x %T\n", adr, val, val_err)
+			cpu.ROM[uint8(0x0f&adr)] = uint8(val) //	メモリの指定されたアドレスの内容を書換える。
+			adr++
+		} else {
+			fmt.Printf("invalid hex format at %d: %s\n", index, elements[index])
+			break
+		}
+		index++
+		if index >= len(elements) {
+			break
+		}
+		if uint8(adr) > MEM_MAX {
+			fmt.Printf("Memory overflow!!\nThis system has only %d bytes of memory space.\n", len(cpu.ROM))
+			break
+		}
+	}
+	return
 }
 
 // DumpMemory 現在のメモリ内容を表示
@@ -216,7 +272,6 @@ func inRange(min, value, max uint8) bool {
 
 func main() {
 	//	var loop int = 1
-
 	// 1. オプション（フラグ）の定義
 	stepMode := flag.Bool("step", false, "Enable step execution mode")
 	speed := flag.Int64("speed", 1000, "Execution speed in milliseconds per instruction")
@@ -262,7 +317,6 @@ func main() {
 
 	fmt.Printf("4bit CPU TD4 emulator\n")
 	fmt.Printf("Reading from the serial port...\n")
-
 	fmt.Printf("Loaded %s. Starting Emulator...\n", filename)
 	fmt.Printf("Mode: Step=%v, Speed=%5dms/inst\n", *stepMode, *speed)
 	fmt.Printf("| PC   BP |OP-code|A register |B register |Cflag| IN port | OUT port |\n")
@@ -282,18 +336,80 @@ func main() {
 			//	改行文字 '\n' が現れるまでバイトを読み込む
 			//	ReadBytesは区切り文字 '\n' も含めて返却する
 			data, _ := stdin.ReadBytes('\n')
-			//	fmt.Printf("%s\n", data)
 			line := strings.ToUpper(string(data))
-			//	fmt.Printf("%s\n", line)
-			// line = strings.ToUpper(string(line))
-			elements := strings.Split(line, " ")
+			line = strings.Replace(line, ",", " ", -1)
+			line = strings.Trim(line, " \n\r")
+			elements := strings.Split(strings.Trim(line, " \n\r"), " ")
 			firstWord := line[0]
-			//	fmt.Printf("%s\n", firstWord)
-			//	fmt.Printf("\n")
 			switch firstWord {
-			/*
-				Xコマンド	レジスタ、カウンタ、フラグ類の検査と変更
+			/* 実装予定
+			Xコマンド	レジスタ、カウンタ、フラグ類の検査と変更
 			*/
+			case 'H': //	実行速度の設定(velocity)
+				if len(elements) == 1 { // パラメータがなければ、現在の設定を表示する。
+					for i := 0; i < len(HelpText); i++ {
+						fmt.Printf("%s\n", HelpText[i])
+					}
+				}
+			case 'S': //	メモリの指定されたアドレスに値を書き込む。
+				// S 0 0x30 0x01 0x02 0x04 0x08 0x40 0x90 0xF7
+				// S 8 0x30 0x01 0x02 0x04 0x08 0x40 0x90 0xF7
+				// S 9 0x30 0x01 0x02 0x04 0x08 0x40 0x90 0xF7
+				// S 8 0x30 0x01 0x02 0x04 0x08 0x40 0x90 0xF7 0x40 0x90 0xF7
+				cpu.writeMemory(elements)
+			case 'B': //	ブレークポイントの参照、設定と解除
+				if len(elements) == 1 { // パラメータがなければ、現在の設定を表示する。
+					if inRange(MEM_MIN, cpu.BP, MEM_MAX) {
+						fmt.Printf("Break point: %d\n", cpu.BP)
+					} else {
+						fmt.Printf("Break point: none\n")
+					}
+				} else if len(elements) > 1 {
+					//	数値変換
+					val, err := strconv.ParseInt(strings.Trim(elements[1], " \n\r"), 0, 8)
+					if err == nil { //	文字列=>数値変換にエラーがなければ、次のステップへ
+						cpu.BP = uint8(val)
+						if inRange(MEM_MIN, uint8(val), MEM_MAX) { // アドレスの範囲であれば、BPに値を設定する。
+							fmt.Printf("Break point: %d\n", cpu.BP)
+						} else {
+							fmt.Printf("Break point: none\n")
+						}
+					}
+				}
+			case 'D': //	現在のCPUのレジスタ内容を表示する。
+				if 1 == len(elements) {
+					cpu.DumpState(cpu.PC)
+				}
+			case 'M': //	現在の現在のメモリ内容を表示
+				if 1 == len(elements) {
+					fmt.Printf("| Adress | OP-code          |\n")
+					fmt.Printf("|:-------|:----------------:|\n")
+					for adr := 0; adr < 16; adr++ {
+						cpu.DumpMemory(uint8(adr))
+					}
+				}
+			case 'T': //	レジスタ表示しながらトレース実行する回数を設定する。
+				if len(elements) == 1 { //	引数がない場合は、1ステップだけ実行する。
+					cpu.Execute()
+					cpu.DumpState(cpu.PC)
+				} else if len(elements) > 1 {
+					//	数値変換
+					val, err := strconv.ParseInt(strings.Trim(elements[1], " \n\r"), 0, 16)
+					if err == nil {
+						//	fmt.Printf("|\n")
+						loop := int(val)
+						//	命令実行
+						for i := 0; i < loop; i++ {
+							state := cpu.Execute()
+							if state != 0 {
+								break //	Breakpointに到達したら、停止する。
+							}
+							time.Sleep(time.Duration(*speed) * time.Millisecond)
+							cpu.DumpState(cpu.PC)
+						}
+					}
+				}
+
 			case 'G': //	ユーザプログラムの連続実行
 				if len(elements) == 1 {
 					*stepMode = false
@@ -315,7 +431,7 @@ func main() {
 					}
 				}
 			case 'V': //	実行速度の設定(velocity)
-				if len(elements) == 1 {
+				if len(elements) == 1 { // パラメータがなければ、現在の設定を表示する。
 					fmt.Printf("Speed=%5dms/inst\n", *speed)
 				} else if len(elements) > 1 {
 					//	数値変換
@@ -328,64 +444,7 @@ func main() {
 						fmt.Printf("Please set the execution time for one step in milliseconds.\n")
 					}
 				}
-			case 'B': //	ブレークポイントの参照、設定と解除
-				if len(elements) == 1 {
-					if inRange(MEM_MIN, cpu.BP, MEM_MAX) {
-						fmt.Printf("Break point: %d", cpu.BP)
-					} else {
-						fmt.Printf("Break point: none")
-					}
-				} else if len(elements) > 1 {
-					//	数値変換
-					val, err := strconv.ParseInt(strings.Trim(elements[1], " \n\r"), 0, 8)
-					if err == nil { // 文字列=>数値変換にエラーがなければ、次のステップへ
-						cpu.BP = uint8(val)
-						if inRange(MEM_MIN, uint8(val), MEM_MAX) { // アドレスの範囲であれば、BPに値を設定する。
-							fmt.Printf("Break point: %d", cpu.BP)
-						} else {
-							fmt.Printf("Break point: none")
-						}
-					}
-				}
-				fmt.Printf("\n")
-			case 'T': //	レジスタ表示しながらトレース実行する回数を設定する。
-				if len(elements) == 1 { // 引数がない場合は、1ステップだけ実行する。
-					cpu.Execute()
-					cpu.DumpState(cpu.PC)
-				} else if len(elements) > 1 {
-					//	数値変換
-					val, err := strconv.ParseInt(strings.Trim(elements[1], " \n\r"), 0, 8)
-					if err == nil {
-						// fmt.Printf("|\n")
-						loop := int(val)
-						//	命令実行
-						for i := 0; i < loop; i++ {
-							state := cpu.Execute()
-							if state != 0 {
-								break //	Breakpointに到達したら、停止する。
-							}
-							time.Sleep(time.Duration(*speed) * time.Millisecond)
-							cpu.DumpState(cpu.PC)
-						}
-					}
-				}
-			case 'S': //	メモリの指定されたアドレスに値を書き込む。
-				if 3 == len(elements) {
-					adr, err1 := strconv.ParseInt(strings.Trim(elements[1], " \n\r"), 0, 8)
-					val, err2 := strconv.ParseInt(strings.Trim(elements[2], " \n\r"), 0, 16)
-					//	fmt.Printf("\nadr:%d,val:%2x\n", adr, val)
-					if err1 == nil && err2 == nil { //	正常に整数値に変換されたかをチェック
-						if inRange(MEM_MIN, uint8(adr), MEM_MAX) { //	指定されたアドレスがメモリ空間内であるかをチェック
-							cpu.ROM[uint8(0x0f&adr)] = uint8(val) //	メモリの指定されたアドレスの内容を書換える。
-							cpu.DumpMemory(uint8(adr))
-						} else {
-							fmt.Printf("The memory space ranges from 0-15.")
-						}
-					} else {
-						fmt.Printf("The input value is incorrect.")
-					}
-					fmt.Printf("\n")
-				}
+
 			case 'I': //	入力ポートの値を設定する。
 				if len(elements) > 1 {
 					//	数値変換
@@ -397,19 +456,8 @@ func main() {
 						fmt.Printf("Only integer values ​​between 0 and 15 can be set.\n")
 					}
 				}
-			case 'D': //	現在のCPUのレジスタ内容を表示する。
-				if 1 == len(elements) {
-					cpu.DumpState(cpu.PC)
-				}
-			case 'M': //	現在の現在のメモリ内容を表示
-				if 1 == len(elements) {
-					fmt.Printf("| Adress | OP-code          |\n")
-					fmt.Printf("|:-------|:----------------:|\n")
-					for adr := 0; adr < 16; adr++ {
-						cpu.DumpMemory(uint8(adr))
-					}
-				}
-			case 'Q':
+
+			case 'Q': //	終了
 				// 	fmt.Printf("\n")
 				execStatus = false // プログラムを終了する。
 			}
@@ -425,15 +473,6 @@ func main() {
 			time.Sleep(time.Duration(*speed) * time.Millisecond)
 			cpu.DumpState(cpu.PC)
 		}
-		/*
-			for i := 0; i < loop; i++ {
-				//	命令実行
-				cpu.Execute()
-				if *stepMode == false {
-					fmt.Printf("\n")
-				}
-			}
-		*/
 	}
 	fmt.Printf("program terminated !\n")
 }
