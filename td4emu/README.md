@@ -197,7 +197,7 @@ Command list
         T [count] :(Trace) プログラムを指定回数だけ命令を実行する（ステップ実行）。
         V [speed] :(Velocity) 実行速度を設定する。
         G [address] :(Go) 指定したアドレスからプログラムの実行を開始する。
-        S [address] [pocode] [pocode] ... :(Setdata) 指定したメモリ番地にオペコードを書き込む。
+        S [address] [opcode] [opcode] ... :(Setdata) 指定したメモリ番地にオペコードを書き込む。
         I [bit pattern] :(InPort) 入力ポートの値を設定する。
         Q :(Quit) モニタプログラムを終了する。
 

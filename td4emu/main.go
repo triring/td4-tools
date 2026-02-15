@@ -87,7 +87,7 @@ func (cpu *CPU) LoadROM(filename string) error {
 			continue
 		}
 		// 要素に分割
-		elements := strings.Split(strings.Trim(line, " \n\r"), " ")
+		elements := strings.Split(line, " ")
 		cpu.writeMemory(elements)
 		break
 	}
@@ -113,7 +113,7 @@ func (cpu *CPU) writeMemory(elements []string) {
 		val, val_err := strconv.ParseInt(strings.Trim(elements[index], " \n\r"), 0, 16)
 		//	fmt.Printf("%d %T\n",val, val_err)
 		if val_err == nil { //	正常に整数値に変換されたかをチェック
-		//	fmt.Printf("%x %x %T\n", adr, val, val_err)
+			//	fmt.Printf("%x %x %T\n", adr, val, val_err)
 			cpu.ROM[uint8(0x0f&adr)] = uint8(val) //	メモリの指定されたアドレスの内容を書換える。
 			adr++
 		} else {
@@ -345,18 +345,20 @@ func main() {
 			/* 実装予定
 			Xコマンド	レジスタ、カウンタ、フラグ類の検査と変更
 			*/
-			case 'H': //	実行速度の設定(velocity)
-				if len(elements) == 1 { // パラメータがなければ、現在の設定を表示する。
+			case 'H': //	ヘルプの表示(help)
+				if len(elements) == 1 {
 					for i := 0; i < len(HelpText); i++ {
 						fmt.Printf("%s\n", HelpText[i])
 					}
 				}
+
 			case 'S': //	メモリの指定されたアドレスに値を書き込む。
 				// S 0 0x30 0x01 0x02 0x04 0x08 0x40 0x90 0xF7
 				// S 8 0x30 0x01 0x02 0x04 0x08 0x40 0x90 0xF7
 				// S 9 0x30 0x01 0x02 0x04 0x08 0x40 0x90 0xF7
 				// S 8 0x30 0x01 0x02 0x04 0x08 0x40 0x90 0xF7 0x40 0x90 0xF7
 				cpu.writeMemory(elements)
+
 			case 'B': //	ブレークポイントの参照、設定と解除
 				if len(elements) == 1 { // パラメータがなければ、現在の設定を表示する。
 					if inRange(MEM_MIN, cpu.BP, MEM_MAX) {
@@ -376,10 +378,12 @@ func main() {
 						}
 					}
 				}
+
 			case 'D': //	現在のCPUのレジスタ内容を表示する。
 				if 1 == len(elements) {
 					cpu.DumpState(cpu.PC)
 				}
+	
 			case 'M': //	現在の現在のメモリ内容を表示
 				if 1 == len(elements) {
 					fmt.Printf("| Adress | OP-code          |\n")
@@ -388,13 +392,14 @@ func main() {
 						cpu.DumpMemory(uint8(adr))
 					}
 				}
+
 			case 'T': //	レジスタ表示しながらトレース実行する回数を設定する。
 				if len(elements) == 1 { //	引数がない場合は、1ステップだけ実行する。
 					cpu.Execute()
 					cpu.DumpState(cpu.PC)
 				} else if len(elements) > 1 {
 					//	数値変換
-					val, err := strconv.ParseInt(strings.Trim(elements[1], " \n\r"), 0, 16)
+					val, err := strconv.ParseInt(strings.Trim(elements[1], " \n\r"), 0, 64)
 					if err == nil {
 						//	fmt.Printf("|\n")
 						loop := int(val)
@@ -430,6 +435,7 @@ func main() {
 						fmt.Printf("G command parameter is invalid.\n")
 					}
 				}
+
 			case 'V': //	実行速度の設定(velocity)
 				if len(elements) == 1 { // パラメータがなければ、現在の設定を表示する。
 					fmt.Printf("Speed=%5dms/inst\n", *speed)

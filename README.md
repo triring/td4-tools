@@ -1,4 +1,4 @@
-# td4-tools TD4 開発ツールセット (Go言語版)
+# td4-tools TD4 開発ツールセット
 <!-- pandoc -f markdown -t html5 -o README.html -c github.css README.md -->
 
 This project is a toolset created to support learning and development of the TD4, a 4-bit CPU made famous by Iku Watanami in his book [How to Create a CPU](https://book.mynavi.jp/ec/products/detail/id=22065).  
@@ -8,13 +8,14 @@ Using these tools, you can easily learn programming and operating principles on 
 本プロジェクトは、渡波郁氏の著書 [CPUの創りかた](https://book.mynavi.jp/ec/products/detail/id=22065) で有名な4bit CPU **TD4** の学習と開発を支援するために作成したツールセットです。  
 Go言語で実装された「アセンブラ」と「エミュレータ」を使用することで、実機が手元になくてもTD4の開発が可能です。  
 これらを使用することで、プログラミングや動作原理をPC上で手軽に学ぶことができます。  
+また、「エミュレータ」をマイコンボード上で動作するように、GoからTinyGoで書換えて、移植しました。実機での、LED制御やスイッチからの入力が可能です。
 
 ## はじめに
 
 このプロジェクトは、以下の2つの目的のために作成したもので、実用性はありません。  
 ご了承下さい。  
 
-1. go言語の勉強のため
+1. Go言語及びTinyGo言語の勉強のため
 2. Googleのマルチモーダル生成AIモデル **Gemini** によるプログラミング支援機能にどれくらいの能力があるのかを検証するため
 
 ## 1. ベースとなる「TD4」について
@@ -36,7 +37,8 @@ TD4の基本構成
 
 ## 2. ツール概要
 
-本環境は、以下の2つのツールで構成されています。
+本環境は、アセンブラとエミュレータの2つツールで構成されています。  
+また、エミュレータには、Go言語版とマイコン上で動作するTinyGo言語版があります。  
 
 ### TD4 アセンブラ (`td4asm`)
 
@@ -69,6 +71,18 @@ TD4の基本構成
 
 * エミュレータ マニュアルへのリンク [./td4emu/README.md](./td4emu/README.md)  
 * エミュレータ ソースコードへのリンク[./td4emu/main.go](./td4emu/main.go)
+
+### TinyGo版 TD4 エミュレータ (`td4emu_tinygo`)
+
+前述のGo言語で作成したTD4 エミュレータtd4emuをマイコンボード上で動作するようにtinygoで書換えたものです。  
+OSのコンソールで動いていたものを、シリアルターミナルで動くようにしただけなので、基本機能はOS上で動くGo版のtd4emuと全く変わりません。  
+異なる点は、機能拡張してIN、OUT命令の入出力をマイコンボードのGPIOを制御できることです。これにより、実機でのハード制御が可能になりました。  
+詳細については、以下のマニュアルをお読みください。スイッチの読み取り、LEDの制御のサンプルを掲載しています。  
+
+* TinyGo版 エミュレータ マニュアルへのリンク [./td4emu_tinygo/README.md](./td4emu_tinygo/README.md)  
+    - [TinyGo TD4 エミュレータ 汎用版](./td4emu_tinygo/core/README.md)
+    - [TinyGo TD4 エミュレータ for Raspberry Pi Pico](./td4emu_tinygo/RasPiPico/README.md)
+    - [TinyGo TD4 エミュレータ for Maker Pi RP2040](./td4emu_tinygo/MAKER-PI-RP2040/README.md)
 
 ## 3 必要な環境とビルド方法
 
@@ -150,7 +164,6 @@ PC:02 | OP:F0 | A:0000(0) B:0000(0) C:0 | IN:0000 | OUT:0000 ?
 ...
 
 ```
----
 
 * 詳細な仕様やコマンドオプションについては、各ツールのドキュメントを参照してください。  
 
